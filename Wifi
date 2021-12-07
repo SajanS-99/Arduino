@@ -1,4 +1,4 @@
-#include <WiFiNINA.h>
+#include <WiFi101.h>
 #include <SPI.h>
 ///////please enter your sensitive data in the Secret tab/arduino_secrets.h
 char ssid[] = SECRET_SSID;        // your network SSID (name)
@@ -6,11 +6,21 @@ char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as k
 int status = WL_IDLE_STATUS;     // the Wifi radio's status
 
 
-const int PIN_TO_SENSOR = 2;   // the pin that OUTPUT pin of sensor is connected to
+const int PIN_TO_SENSOR = 5;   // the pin that OUTPUT pin of sensor is connected to
 int pinStateCurrent   = LOW; // current state of pin
 int pinStatePrevious  = LOW; // previous state of pin
 
+const int PIN_TO_SENSOR_2 = 2;   // the pin that OUTPUT pin of sensor is connected to
+int pinStateCurrent_2   = LOW; // current state of pin
+int pinStatePrevious_2  = LOW;
+
 WiFiClient client;
+int    HTTP_PORT   = 80;
+String HTTP_METHOD = "GET";
+char   HOST_NAME[] = "maker.ifttt.com";
+String PATH_NAME   = "/trigger/arduino-email-ENSC/with/key/pQ4holNjHxi4sxxedd6Z4_B6lk2lPO3kg9IpuoQzpYo"; 
+String PATH_NAME_2   = "/trigger/arduino-email-ENSC2/with/key/pQ4holNjHxi4sxxedd6Z4_B6lk2lPO3kg9IpuoQzpYo"; 
+String queryString = "";
 
 
 
@@ -20,7 +30,9 @@ void setup() {
   while (!Serial);
   
   pinMode(PIN_TO_SENSOR, INPUT); // set arduino pin to input mode to read value from OUTPUT pin of sensor
-
+  pinMode(PIN_TO_SENSOR_2, INPUT);
+  
+  
   // attempt to connect to Wifi network:
   while (status != WL_CONNECTED) {
     Serial.print("Attempting to connect to network: ");
@@ -48,7 +60,7 @@ void loop() {
  printData();
  Serial.println("----------------------------------------");
  
- pinStatePrevious = pinStateCurrent; // store old state
+  pinStatePrevious = pinStateCurrent; // store old state
   pinStateCurrent = digitalRead(PIN_TO_SENSOR);   // read new state
 
   if (pinStatePrevious == LOW && pinStateCurrent == HIGH) {   // pin state change: LOW -> HIGH
@@ -91,6 +103,50 @@ void loop() {
     //Do nothing
     
   }
+  
+  pinStatePrevious_2 = pinStateCurrent_2; // store old state
+  pinStateCurrent_2 = digitalRead(PIN_TO_SENSOR_2);   // read new state
+
+  if (pinStatePrevious_2 == LOW && pinStateCurrent_2 == HIGH) {   // pin state change: LOW -> HIGH
+    Serial.println("Motion detected!");
+    // TODO: turn on alarm, light or activate a device ... here
+    
+    // connect to web server on port 80:
+  if (client.connect(HOST_NAME, HTTP_PORT)) {
+    // if connected:
+    Serial.println("Connected to server");
+    // make a HTTP request:
+    // send HTTP header
+    client.println("GET " + PATH_NAME_2 + queryString + " HTTP/1.1");
+    client.println("Host: " + String(HOST_NAME));
+    client.println("Connection: close");
+    client.println(); // end HTTP header
+
+    while (client.connected()) {
+      if (client.available()) {
+        // read an incoming byte from the server and print it to serial monitor:
+        char c = client.read();
+        Serial.print(c);
+      }
+    }
+
+    // the server's disconnected, stop the client:
+    client.stop();
+    Serial.println();
+    Serial.println("disconnected");
+  } else {// if not connected:
+    Serial.println("connection failed");
+  }
+    
+    
+    
+    
+  } else if (pinStatePrevious_2 == HIGH && pinStateCurrent_2 == LOW) {   // pin state change: HIGH -> LOW
+    Serial.println("Motion stopped!");
+    // TODO: turn off alarm, light or deactivate a device ... here
+    //Do nothing
+    
+  } 
 }
 
 void printData() {
